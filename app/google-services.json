@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "793064403888",
+    "project_id": "banktj-1e34e",
+    "storage_bucket": "banktj-1e34e.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:793064403888:android:eeef23e3b22f300f0d5c75",
+        "android_client_info": {
+          "package_name": "com.om.banktj"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqEhy1cczjtu2PJv9M8jMUnJykqT51ySA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
