@@ -21,7 +21,7 @@
         app:layout_constraintTop_toTopOf="parent"
         />
 
-    <com.google.android.material.textfield.TextInputEditText
+    <AutoCompleteTextView
         android:id="@+id/UserIdInput"
         android:layout_width="298dp"
         android:layout_height="43dp"

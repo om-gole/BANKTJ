@@ -12,6 +12,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -42,7 +44,9 @@ import org.json.JSONObject;
 
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     TextView textView;
@@ -53,9 +57,14 @@ public class MainActivity extends AppCompatActivity {
     RequestQueue queue;
     String URL = "https://user.tjhsst.edu/2024ogole/data";
 
+    String userbalance;
     String useremail;
     String userid;
+
+    List<String> allusers;
     private FirebaseAuth mAuth;
+
+    AutoCompleteTextView autoCompleteTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -224,6 +233,8 @@ public class MainActivity extends AppCompatActivity {
                             setContentView(R.layout.activity_main);
                             //getUserInfo(mAuth.getCurrentUser().getEmail());
                             useremail = mAuth.getCurrentUser().getEmail();
+                            updateUserInfo(useremail);
+                            System.out.println("Testing: " + "IT WORKS 1" );
                             goMain();
                             // Sign in success, update UI with the signed-in user's information
                             System.out.println("Testing: " + mAuth.getCurrentUser().getEmail());
@@ -240,7 +251,40 @@ public class MainActivity extends AppCompatActivity {
 
     public void goSendMoney(View view) {
         setContentView(R.layout.send_money);
-    } //to android page
+        autoCompleteTextView = (AutoCompleteTextView) findViewById(R.id.UserIdInput);
+        queue = Volley.newRequestQueue(this);
+
+        String url = "https://user.tjhsst.edu/2024ogole/data";
+
+        StringRequest request = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                try {
+                    JSONArray jsonArray = new JSONArray(response);
+                    List<String> options = new ArrayList<>();
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject jsonObject = jsonArray.getJSONObject(i);
+                        options.add(jsonObject.getString("userid"));
+                    }
+
+                    ArrayAdapter<String> adapter = new ArrayAdapter<String>
+                            (MainActivity.this, android.R.layout.select_dialog_item, options);
+                    autoCompleteTextView.setAdapter(adapter);
+                    allusers = options;
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                System.out.println("volley error" + error.toString());
+            }
+        });
+
+        queue.add(request);
+    }
 
     public void goTransHist(View view) {
         setContentView(R.layout.trans_hist);
@@ -250,6 +294,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void goMain(View view) {
         setContentView(R.layout.activity_main);
+        System.out.println("Testing: " + "IT DEFINETLY WORKS 2");
         updateUserInfo(useremail);
     }
 
@@ -275,7 +320,7 @@ public class MainActivity extends AppCompatActivity {
                     JSONObject object = new JSONObject("{\"data\":" + response + "}");
                     //convert object to an array of objects
                     JSONArray array = object.getJSONArray("data");
-
+                    userbalance = array.getJSONObject(0).getString("balance");
                     userid = array.getJSONObject(0).getString("userid");
                     textView.setText("" + array.getJSONObject(0).getString("userid"));
                     balanceView.setText("$" + array.getJSONObject(0).getString("balance"));
@@ -300,6 +345,23 @@ public class MainActivity extends AppCompatActivity {
 
         final String recipient = UserIdInput.getText().toString();
         final String amount = MoneyInput.getText().toString();
+
+        double amountDouble = Double.parseDouble(amount);
+        if(amountDouble > 10 || amountDouble <= 0){
+            Toast.makeText(getApplicationContext(), "Users cannot send more than 10 dollars or less than 0", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        double userbalanceDouble = Double.parseDouble(userbalance);
+        if(userbalanceDouble < amountDouble){
+            Toast.makeText(getApplicationContext(), "You do not have enough funds to execute this transaction", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if(!allusers.contains(recipient)){
+            Toast.makeText(getApplicationContext(), "This User does not exist in our database", Toast.LENGTH_LONG).show();
+            return;
+        }
 
         // Create an AlertDialog
         new AlertDialog.Builder(this)
@@ -326,6 +388,7 @@ public class MainActivity extends AppCompatActivity {
                                     JSONObject object = new JSONObject("{\"data\":"+response+"}");
                                     //convert object to an array of objects
                                     JSONArray array = object.getJSONArray("data");
+                                    System.out.println(array);
                                     Log.i("USER","" + array.getJSONObject(0).getString("userid"));
                                     Log.i("MONEY","$" + array.getJSONObject(0).getString("balance"));
                                     Log.i("USER","" + array.getJSONObject(1).getString("userid"));
@@ -344,6 +407,8 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void onErrorResponse(VolleyError error) {
                                 System.out.println("volley error"+ error.toString());
+                                //goMain();
+                                Toast.makeText(getApplicationContext(), "WRONG USER ID", Toast.LENGTH_LONG).show();
                             }
                         });
                         queue.add(request);
