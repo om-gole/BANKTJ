@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -42,6 +43,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -417,6 +420,115 @@ public class MainActivity extends AppCompatActivity {
                 .setNegativeButton(android.R.string.no, null)
                 .setIcon(android.R.drawable.ic_dialog_alert)
                 .show();
-    } //sends transaction to server
+    } //sends transaction to server SEND MONEY FROM APP
+    public void sendMoneyQR(String recipient, String amount) { //SEND MONEY FROM QRCODE
+//        UserIdInput = (EditText)findViewById(R.id.UserIdInput);
+//        MoneyInput = (EditText)findViewById(R.id.MoneyInput);
+
+//        final String recipient = UserIdInput.getText().toString();
+//        final String amount = MoneyInput.getText().toString();
+
+        double amountDouble = Double.parseDouble(amount);
+        if(amountDouble > 10 || amountDouble <= 0){
+            Toast.makeText(getApplicationContext(), "Users cannot send more than 10 dollars or less than 0", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        double userbalanceDouble = Double.parseDouble(userbalance);
+        if(userbalanceDouble < amountDouble){
+            Toast.makeText(getApplicationContext(), "You do not have enough funds to execute this transaction", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if(!allusers.contains(recipient)){
+            Toast.makeText(getApplicationContext(), "This User does not exist in our database", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // Create an AlertDialog
+        new AlertDialog.Builder(this)
+                .setTitle("Confirm Transaction")
+                .setMessage("Are you sure you want to send $" + amount + " to user " + recipient + "?")
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // User clicked YES button
+                        queue = Volley.newRequestQueue(getApplicationContext());
+                        Log.i("SENDMONEY", "Working");
+
+                        //time stuff
+                        SimpleDateFormat formatter = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+                        Date date = new Date();
+                        String datetime = formatter.format(date);
+                        Log.i("DATETIME",datetime);
+
+                        String newURL = URL + "/transaction?useridTO=" + recipient + "&amtTO=" + amount + "&useridFROM=" + userid + "&amtFROM=" + amount + "&datetime=" + datetime;
+                        StringRequest request = new StringRequest(Request.Method.GET, newURL, new Response.Listener<String>() {
+                            @Override
+                            public void onResponse(String response) {
+                                try {
+                                    //format response to JSON object called "data"
+                                    JSONObject object = new JSONObject("{\"data\":"+response+"}");
+                                    //convert object to an array of objects
+                                    JSONArray array = object.getJSONArray("data");
+                                    System.out.println(array);
+                                    Log.i("USER","" + array.getJSONObject(0).getString("userid"));
+                                    Log.i("MONEY","$" + array.getJSONObject(0).getString("balance"));
+                                    Log.i("USER","" + array.getJSONObject(1).getString("userid"));
+                                    Log.i("MONEY","$" + array.getJSONObject(1).getString("balance"));
+                                    //get first object and display its id
+                                    //                      textView.setText("" + array.getJSONObject(0).getString("userid"));
+                                    //                      balanceView.setText("$" + array.getJSONObject(0).getString("balance"));
+                                    goMain();
+                                    Toast.makeText(getApplicationContext(), "You sent $" + amount + " to " + recipient + "!", Toast.LENGTH_LONG).show();
+
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }, new Response.ErrorListener() {
+                            @Override
+                            public void onErrorResponse(VolleyError error) {
+                                System.out.println("volley error"+ error.toString());
+                                //goMain();
+                                Toast.makeText(getApplicationContext(), "WRONG USER ID", Toast.LENGTH_LONG).show();
+                            }
+                        });
+                        queue.add(request);
+                    }
+                })
+                .setNegativeButton(android.R.string.no, null)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+    }
+    public void scanQR(View view) {
+        IntentIntegrator integrator = new IntentIntegrator(this);
+        integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE);
+        integrator.setPrompt("Scan a QR code");
+        integrator.setCameraId(0);
+        integrator.setBeepEnabled(false);
+        integrator.setBarcodeImageEnabled(true);
+        integrator.initiateScan();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if(result != null) {
+            if(result.getContents() == null) {
+                Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show();
+            } else {
+                try {
+                    JSONObject obj = new JSONObject(result.getContents());
+                    String recipient = obj.getString("recipient");
+                    String amount = obj.getString("amount");
+                    sendMoneyQR(recipient, amount);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
 
 }
